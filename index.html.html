@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>京都五天四夜之旅</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063823.png">
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: env(safe-area-inset-bottom);
+            background-color: #f5f5f4; /* stone-100 */
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        input, textarea, select {
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+        /* Custom Kyoto Image Animation */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 h-screen overflow-hidden">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- Icons ---
+        const Icon = ({ name, size = 20, className }) => {
+            const icons = {
+                Plane: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12h20"/><path d="M13 2l9 10-9 10"/><path d="M12 2v20"/></svg>,
+                Home: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+                Map: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>,
+                Wallet: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+                Briefcase: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="6" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+                Trash: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+                Edit: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
+                Snowflake: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 20-4-4"/><path d="m4 4 4 4"/><path d="m4 20 4-4"/><path d="m20 4-4 4"/></svg>,
+                Sun: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>,
+                Cloud: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.5c-2.3 0-4.4-1.7-4.4-4 0-1.9 1.2-3.6 2.9-4.3.4-1.6 1.9-2.7 3.6-2.7 1.4 0 2.7.7 3.4 1.9 1.5.1 2.8 1.3 3 2.8.2 2.3-1.6 4.3-3.9 4.3H17.5Z"/></svg>,
+                CloudRain: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>,
+                Calendar: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+                List: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>,
+                MapPin: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+                Moon: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>,
+                Martini: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/></svg>
+            };
+            return icons[name] || null;
+        };
+
+        // --- Initial Data (Nightlife added, late start) ---
+        const initialItinerary = [
+            {
+                id: 1, date: "1/15 (四)", title: "抵達京都 & Nightcap", icon: "Plane",
+                weather: { temp: "4°C - 9°C", condition: "多雲", icon: "Cloud" },
+                events: [
+                    { time: "11:15", title: "起飛 TPE 🛫", desc: "國泰 CX564", type: "transport" },
+                    { time: "14:55", title: "抵達 KIX 🛬", desc: "入境約 1 小時", type: "transport" },
+                    { time: "16:14", title: "HARUKA 遙號", desc: "前往京都車站 (約 75 分鐘)", type: "transport" },
+                    { time: "18:00", title: "Check-in", desc: "皇家花園坎瓦斯酒店 (Royal Park Canvas)", type: "hotel" },
+                    { time: "19:00", title: "Uniqlo 採購 & 晚餐", desc: "京都車站 Porta 採買與拉麵小路", type: "activity" },
+                    { time: "22:00", title: "Bar K6", desc: "京都傳奇酒吧，享受第一晚的雞尾酒", type: "food" }
+                ]
+            },
+            {
+                id: 2, date: "1/16 (五)", title: "滑雪與琴酒之夜 🏂", icon: "Snowflake",
+                weather: { temp: "-2°C - 3°C", condition: "降雪", icon: "Snowflake" },
+                events: [
+                    { time: "10:00", title: "睡飽出發", desc: "JR 二條 -> 山科 -> 志賀站", type: "transport" },
+                    { time: "11:00", title: "接駁巴士", desc: "志賀站 -> 琵琶湖 Valley 纜車口", type: "transport" },
+                    { time: "11:45", title: "滑雪體驗 & 午餐", desc: "租借裝備、滑雪", type: "activity" },
+                    { time: "18:00", title: "返回京都", desc: "回飯店稍作休息", type: "transport" },
+                    { time: "19:30", title: "晚餐：燒肉", desc: "推薦：弘燒肉 (需預約)", type: "food" },
+                    { time: "21:30", title: "Nokishita711", desc: "Craft Gin & Botanicals 特色琴酒酒吧", type: "food" }
+                ]
+            },
+            {
+                id: 3, date: "1/17 (六)", title: "鴨川與魔幻酒吧 🍸", icon: "Map",
+                weather: { temp: "2°C - 8°C", condition: "晴時多雲", icon: "Sun" },
+                events: [
+                    { time: "11:00", title: "早午餐", desc: "Songbird Coffee 或 Smart Coffee", type: "food" },
+                    { time: "13:30", title: "按摩體驗", desc: "預約飯店附近或河原町的按摩", type: "activity" },
+                    { time: "16:00", title: "日歸溫泉", desc: "Tenzan-no-yu (天山之湯)", type: "activity" },
+                    { time: "19:00", title: "鴨川晚餐", desc: "先斗町散策，找家氣氛好的餐廳", type: "food" },
+                    { time: "21:00", title: "L'Escamoteur Bar", desc: "蒸氣龐克風格魔術酒吧，氛圍絕佳", type: "food" }
+                ]
+            },
+            {
+                id: 4, date: "1/18 (日)", title: "古都巡禮 & 祇園夜 🏮", icon: "Map",
+                weather: { temp: "3°C - 10°C", condition: "陰天", icon: "Cloud" },
+                events: [
+                    { time: "11:00", title: "清水寺", desc: "不用太早起，悠閒參拜", type: "activity" },
+                    { time: "12:30", title: "二年坂、三年坂", desc: "逛街、買伴手禮", type: "activity" },
+                    { time: "14:00", title: "午餐", desc: "日式定食或湯豆腐", type: "food" },
+                    { time: "16:00", title: "祇園/花見小路", desc: "感受藝妓文化與黃昏美景", type: "activity" },
+                    { time: "18:00", title: "四條河原町", desc: "百貨公司最後採買", type: "activity" },
+                    { time: "20:00", title: "Gion Finlandia Bar", desc: "由置屋改建的北歐風酒吧，庭園極美", type: "food" }
+                ]
+            },
+            {
+                id: 5, date: "1/19 (一)", title: "返程 ✈️", icon: "Plane",
+                weather: { temp: "5°C - 11°C", condition: "晴天", icon: "Sun" },
+                events: [
+                    { time: "10:00", title: "Check-out", desc: "寄放行李", type: "hotel" },
+                    { time: "11:30", title: "最後午餐", desc: "二條城附近或京都車站", type: "food" },
+                    { time: "13:00", title: "搭乘 HARUKA", desc: "前往關西機場", type: "transport" },
+                    { time: "14:30", title: "抵達機場", desc: "報到、免稅店", type: "transport" },
+                    { time: "16:15", title: "起飛 KIX 🛫", desc: "國泰 CX565", type: "transport" },
+                    { time: "18:30", title: "抵達 TPE 🛬", desc: "甜蜜的家", type: "transport" }
+                ]
+            }
+        ];
+
+        const initialPackingList = [
+            { id: 1, text: "護照", checked: false },
+            { id: 2, text: "日幣現金 / 信用卡", checked: false },
+            { id: 3, text: "網卡 / Roaming", checked: false },
+            { id: 4, text: "滑雪襪 (厚)", checked: false },
+            { id: 5, text: "發熱衣 x 3", checked: false },
+            { id: 6, text: "防水手套 (滑雪用)", checked: false },
+            { id: 7, text: "毛帽 & 圍巾", checked: false },
+            { id: 8, text: "個人藥品", checked: false },
+            { id: 9, text: "行動電源", checked: false },
+            { id: 10, text: "機票證明", checked: false },
+        ];
+
+        // --- App Component ---
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('home');
+            
+            // --- State: Itinerary ---
+            const [itinerary, setItinerary] = useState(() => {
+                const saved = localStorage.getItem('kyoto_itinerary_v4');
+                return saved ? JSON.parse(saved) : initialItinerary;
+            });
+            const [editingDay, setEditingDay] = useState(null);
+            const [selectedDayId, setSelectedDayId] = useState(1);
+
+            // --- State: Money ---
+            const [expenses, setExpenses] = useState(() => {
+                const saved = localStorage.getItem('kyoto_expenses');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [rate, setRate] = useState(0.22);
+            const [newExpense, setNewExpense] = useState({ item: '', amount: '' });
+
+            // --- State: Packing ---
+            const [packingList, setPackingList] = useState(() => {
+                const saved = localStorage.getItem('kyoto_packing');
+                return saved ? JSON.parse(saved) : initialPackingList;
+            });
+            const [newItem, setNewItem] = useState("");
+
+            // --- Effects ---
+            useEffect(() => localStorage.setItem('kyoto_itinerary_v4', JSON.stringify(itinerary)), [itinerary]);
+            useEffect(() => localStorage.setItem('kyoto_expenses', JSON.stringify(expenses)), [expenses]);
+            useEffect(() => localStorage.setItem('kyoto_packing', JSON.stringify(packingList)), [packingList]);
+
+            // --- Handlers ---
+            const updateEvent = (dayId, eventIndex, field, value) => {
+                const newItinerary = [...itinerary];
+                const day = newItinerary.find(d => d.id === dayId);
+                day.events[eventIndex][field] = value;
+                setItinerary(newItinerary);
+            };
+
+            const addEvent = (dayId) => {
+                const newItinerary = [...itinerary];
+                const day = newItinerary.find(d => d.id === dayId);
+                day.events.push({ time: "22:00", title: "新行程", desc: "請輸入內容", type: "activity" });
+                setItinerary(newItinerary);
+            };
+            
+            const deleteEvent = (dayId, eventIndex) => {
+                const newItinerary = [...itinerary];
+                const day = newItinerary.find(d => d.id === dayId);
+                day.events.splice(eventIndex, 1);
+                setItinerary(newItinerary);
+            }
+
+            const goToItinerary = (dayId) => {
+                setSelectedDayId(dayId);
+                setActiveTab('itinerary');
+            }
+
+            const addExpense = (e) => {
+                e.preventDefault();
+                if (!newExpense.item || !newExpense.amount) return;
+                setExpenses([{ ...newExpense, id: Date.now(), date: new Date().toLocaleDateString() }, ...expenses]);
+                setNewExpense({ item: '', amount: '' });
+            };
+            
+            const deleteExpense = (id) => setExpenses(expenses.filter(e => e.id !== id));
+            const totalSpent = useMemo(() => expenses.reduce((sum, curr) => sum + parseFloat(curr.amount), 0), [expenses]);
+
+            const toggleItem = (id) => setPackingList(packingList.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+            const addPackingItem = (e) => {
+                e.preventDefault();
+                if(!newItem.trim()) return;
+                setPackingList([...packingList, { id: Date.now(), text: newItem, checked: false }]);
+                setNewItem("");
+            };
+            const deletePackingItem = (id) => setPackingList(packingList.filter(item => item.id !== id));
+
+            // --- Render Logic ---
+            const renderContent = () => {
+                // 1. HOME TAB
+                if (activeTab === 'home') {
+                    return (
+                        <div className="space-y-4 pb-24 pt-4">
+                            {/* Hero Image */}
+                            <div className="mx-4 h-64 rounded-3xl shadow-xl overflow-hidden relative group">
+                                <div 
+                                    className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
+                                    style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80")' }}
+                                ></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-transparent to-transparent"></div>
+                                <div className="absolute bottom-0 left-0 p-6 text-white animate-fade-in">
+                                    <h2 className="text-4xl font-light tracking-wide mb-1" style={{fontFamily: 'Georgia, serif'}}>Kyoto</h2>
+                                    <p className="text-stone-300 font-light tracking-widest text-sm uppercase">Jan 15 - Jan 19, 2026</p>
+                                    <div className="mt-4 flex items-center gap-2 text-xs bg-white/10 w-fit px-3 py-1.5 rounded-full backdrop-blur-md border border-white/20">
+                                        <Icon name="Home" size={12} className="text-stone-200" />
+                                        <span className="tracking-wide">Royal Park Canvas</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="px-4 mt-8">
+                                <h3 className="font-medium text-stone-500 text-xs uppercase tracking-widest mb-3 pl-1">Daily Overview</h3>
+                                <div className="grid gap-3">
+                                    {itinerary.map(day => (
+                                        <div 
+                                            key={day.id} 
+                                            onClick={() => goToItinerary(day.id)}
+                                            className="bg-white p-4 rounded-xl shadow-sm border border-stone-200/60 flex items-center justify-between active:scale-[0.98] transition-all hover:shadow-md cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-stone-100 w-12 h-12 rounded-lg flex items-center justify-center text-stone-600 font-serif">
+                                                    <span className="font-bold text-lg">{day.date.split('/')[1].split(' ')[0]}</span>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-stone-700">{day.date}</h4>
+                                                    <p className="text-xs text-stone-400 font-medium">{day.title}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="flex justify-end mb-1 text-stone-400">
+                                                    <Icon name={day.weather.icon} size={18} />
+                                                </div>
+                                                <span className="text-[10px] font-mono font-medium text-stone-500 bg-stone-50 px-2 py-1 rounded border border-stone-100">
+                                                    {day.weather.temp}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 2. ITINERARY TAB
+                if (activeTab === 'itinerary') {
+                    const currentDay = itinerary.find(d => d.id === selectedDayId) || itinerary[0];
+
+                    return (
+                        <div className="h-full flex flex-col pt-4">
+                            {/* Day Selector */}
+                            <div className="flex overflow-x-auto gap-2 px-4 pb-4 hide-scrollbar flex-shrink-0">
+                                {itinerary.map(day => (
+                                    <button
+                                        key={day.id}
+                                        onClick={() => { setSelectedDayId(day.id); setEditingDay(null); }}
+                                        className={`flex-shrink-0 px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all ${
+                                            selectedDayId === day.id 
+                                            ? 'bg-stone-800 text-white shadow-lg' 
+                                            : 'bg-white text-stone-400 border border-stone-200'
+                                        }`}
+                                    >
+                                        {day.date}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Detailed List */}
+                            <div className="flex-1 overflow-y-auto pb-24 px-4">
+                                <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 min-h-[500px]">
+                                    <div className="flex justify-between items-start mb-8">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-stone-800 font-serif">{currentDay.title}</h2>
+                                            <div className="flex items-center gap-2 text-xs text-stone-400 mt-2 font-medium">
+                                                <Icon name={currentDay.weather.icon} size={14} />
+                                                <span>{currentDay.weather.condition} • {currentDay.weather.temp}</span>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setEditingDay(editingDay === currentDay.id ? null : currentDay.id)}
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${editingDay === currentDay.id ? 'bg-stone-800 text-white' : 'bg-stone-50 text-stone-400'}`}
+                                        >
+                                            <Icon name={editingDay === currentDay.id ? "Check" : "Edit"} size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div className="relative border-l border-stone-200 ml-2 space-y-10 pl-8 py-2">
+                                        {currentDay.events.map((event, idx) => (
+                                            <div key={idx} className="relative group">
+                                                <div className={`absolute -left-[37px] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm z-10 ${
+                                                    event.type === 'transport' ? 'bg-stone-400' : 
+                                                    event.type === 'food' ? 'bg-stone-300' : 
+                                                    'bg-stone-600'
+                                                }`}></div>
+                                                
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        {editingDay === currentDay.id ? (
+                                                            <div className="space-y-3 bg-stone-50 p-4 rounded-lg border border-stone-200 animate-fade-in">
+                                                                <div className="flex gap-2">
+                                                                    <input className="w-1/3 border border-stone-300 rounded px-2 py-1 text-sm font-mono bg-white" value={event.time} onChange={(e) => updateEvent(currentDay.id, idx, 'time', e.target.value)} />
+                                                                    <select 
+                                                                        className="w-2/3 border border-stone-300 rounded px-2 py-1 text-sm bg-white"
+                                                                        value={event.type} 
+                                                                        onChange={(e) => updateEvent(currentDay.id, idx, 'type', e.target.value)}
+                                                                    >
+                                                                        <option value="activity">活動</option>
+                                                                        <option value="food">飲食</option>
+                                                                        <option value="transport">交通</option>
+                                                                        <option value="hotel">住宿</option>
+                                                                    </select>
+                                                                </div>
+                                                                <input className="w-full border border-stone-300 rounded px-2 py-1 text-sm font-bold bg-white" placeholder="標題" value={event.title} onChange={(e) => updateEvent(currentDay.id, idx, 'title', e.target.value)} />
+                                                                <textarea className="w-full border border-stone-300 rounded px-2 py-1 text-sm text-stone-600 bg-white" placeholder="備註" rows="2" value={event.desc} onChange={(e) => updateEvent(currentDay.id, idx, 'desc', e.target.value)} />
+                                                                <button onClick={() => deleteEvent(currentDay.id, idx)} className="w-full text-red-400 text-xs py-2 flex items-center justify-center gap-1 border border-red-100 rounded hover:bg-red-50">
+                                                                    <Icon name="Trash" size={12} /> 刪除
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex items-baseline justify-between">
+                                                                    <span className="text-xs font-medium font-mono text-stone-400 mb-1 block">{event.time}</span>
+                                                                </div>
+                                                                <h4 className="font-bold text-stone-800 text-base">{event.title}</h4>
+                                                                <p className="text-sm text-stone-500 mt-1 leading-relaxed">{event.desc}</p>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {editingDay === currentDay.id && (
+                                            <button 
+                                                onClick={() => addEvent(currentDay.id)}
+                                                className="w-full py-3 rounded-xl border border-dashed border-stone-300 text-stone-500 text-sm font-bold flex items-center justify-center gap-2 hover:bg-stone-50 transition-colors"
+                                            >
+                                                <Icon name="Plus" size={16} /> 新增行程
+                                            </button>
+                                        )}
+                                        
+                                        <div className="absolute -left-[33px] bottom-0 w-1.5 h-1.5 rounded-full bg-stone-200"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 3. MONEY TAB
+                if (activeTab === 'money') {
+                    return (
+                        <div className="space-y-4 pb-24 pt-4 px-4">
+                            <div className="bg-stone-800 p-6 rounded-2xl text-white shadow-xl">
+                                <h2 className="text-xs font-bold uppercase tracking-widest opacity-60 mb-6">Currency Converter</h2>
+                                <div className="flex items-end gap-2 mb-2">
+                                    <span className="text-4xl font-light font-serif">¥</span>
+                                    <input 
+                                        type="number" 
+                                        id="jpyInput"
+                                        placeholder="0"
+                                        className="bg-transparent border-b border-stone-600 text-4xl font-light w-full focus:outline-none focus:border-stone-400 placeholder-stone-700 font-mono"
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const twd = document.getElementById('twdDisplay');
+                                            if(val) twd.innerText = (val * rate).toFixed(0);
+                                            else twd.innerText = "0";
+                                        }}
+                                    />
+                                </div>
+                                <div className="flex justify-between items-center text-stone-400 mt-4">
+                                    <span>≈ NT$ <span id="twdDisplay" className="font-bold text-xl text-white ml-1">0</span></span>
+                                    <div className="flex items-center gap-2 bg-stone-700/50 px-2 py-1 rounded text-[10px] tracking-wide">
+                                        <span>RATE</span>
+                                        <input 
+                                            type="number" 
+                                            value={rate} 
+                                            onChange={(e) => setRate(e.target.value)}
+                                            className="w-10 bg-transparent text-center border-b border-stone-500 focus:outline-none text-white"
+                                            step="0.001"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-stone-800">支出紀錄</h3>
+                                    <span className="text-xs font-mono bg-stone-100 px-2 py-1 rounded text-stone-600">¥ {totalSpent.toLocaleString()}</span>
+                                </div>
+                                
+                                <form onSubmit={addExpense} className="flex gap-2 mb-6">
+                                    <input 
+                                        value={newExpense.item}
+                                        onChange={e => setNewExpense({...newExpense, item: e.target.value})}
+                                        placeholder="項目" 
+                                        className="flex-1 bg-stone-50 border-0 rounded-lg px-3 py-3 text-sm focus:ring-1 focus:ring-stone-200"
+                                    />
+                                    <input 
+                                        type="number"
+                                        value={newExpense.amount}
+                                        onChange={e => setNewExpense({...newExpense, amount: e.target.value})}
+                                        placeholder="金額" 
+                                        className="w-24 bg-stone-50 border-0 rounded-lg px-3 py-3 text-sm focus:ring-1 focus:ring-stone-200"
+                                    />
+                                    <button type="submit" className="bg-stone-800 text-white rounded-lg px-4 flex items-center justify-center">
+                                        <Icon name="Plus" size={18} />
+                                    </button>
+                                </form>
+
+                                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                                    {expenses.length === 0 && <p className="text-center text-stone-300 text-xs py-8 tracking-widest uppercase">No expenses yet</p>}
+                                    {expenses.map(e => (
+                                        <div key={e.id} className="flex justify-between items-center p-3 hover:bg-stone-50 rounded-lg group transition-colors border border-transparent hover:border-stone-100">
+                                            <div>
+                                                <p className="font-medium text-stone-800 text-sm">{e.item}</p>
+                                                <p className="text-[10px] text-stone-400 mt-0.5">{e.date}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-mono font-medium text-stone-600">¥{parseInt(e.amount).toLocaleString()}</span>
+                                                <button onClick={() => deleteExpense(e.id)} className="text-stone-300 hover:text-red-400 transition-colors">
+                                                    <Icon name="Trash" size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 4. PACKING TAB
+                if (activeTab === 'packing') {
+                    return (
+                        <div className="space-y-4 pb-24 pt-4 px-4">
+                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-lg font-bold text-stone-800">行李清單</h2>
+                                    <span className="text-xs bg-stone-100 text-stone-600 px-2 py-1 rounded-md font-mono">
+                                        {packingList.filter(i => i.checked).length} / {packingList.length}
+                                    </span>
+                                </div>
+                                
+                                <form onSubmit={addPackingItem} className="flex gap-2 mb-6">
+                                    <input 
+                                        value={newItem}
+                                        onChange={e => setNewItem(e.target.value)}
+                                        placeholder="新增物品..." 
+                                        className="flex-1 bg-stone-50 border-0 rounded-lg px-3 py-3 text-sm focus:ring-1 focus:ring-stone-200"
+                                    />
+                                    <button type="submit" className="bg-stone-800 text-white rounded-lg px-4 flex items-center justify-center">
+                                        <Icon name="Plus" size={18} />
+                                    </button>
+                                </form>
+
+                                <div className="space-y-2">
+                                    {packingList.map(item => (
+                                        <div 
+                                            key={item.id} 
+                                            className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all active:scale-[0.99] touch-manipulation group"
+                                            onClick={() => toggleItem(item.id)}
+                                            style={{backgroundColor: item.checked ? '#fafaf9' : 'white'}}
+                                        >
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-stone-400 border-stone-400' : 'border-stone-300 group-hover:border-stone-400'}`}>
+                                                {item.checked && <Icon name="Check" size={12} className="text-white" />}
+                                            </div>
+                                            <span className={`flex-1 text-sm ${item.checked ? 'text-stone-300 line-through' : 'text-stone-700'}`}>
+                                                {item.text}
+                                            </span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); deletePackingItem(item.id); }}
+                                                className="text-stone-200 hover:text-red-400 p-2 transition-colors"
+                                            >
+                                                <Icon name="Trash" size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full max-w-md mx-auto bg-stone-50 shadow-2xl overflow-hidden relative">
+                    {/* Content Area (Header removed) */}
+                    <main className="flex-1 overflow-y-auto hide-scrollbar bg-stone-50/50">
+                        {renderContent()}
+                    </main>
+
+                    {/* Bottom Navigation */}
+                    <nav className="bg-white/90 backdrop-blur-md border-t border-stone-200 px-6 py-3 pb-safe-bottom flex justify-between items-center z-20 sticky bottom-0 shadow-[0_-5px_10px_rgba(0,0,0,0.02)]">
+                        <button 
+                            onClick={() => setActiveTab('home')}
+                            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-stone-800' : 'text-stone-300'}`}
+                        >
+                            <Icon name="Calendar" size={22} />
+                            <span className="text-[10px] font-medium tracking-wide">概覽</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('itinerary')}
+                            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'itinerary' ? 'text-stone-800' : 'text-stone-300'}`}
+                        >
+                            <Icon name="List" size={22} />
+                            <span className="text-[10px] font-medium tracking-wide">行程</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('money')}
+                            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'money' ? 'text-stone-800' : 'text-stone-300'}`}
+                        >
+                            <Icon name="Wallet" size={22} />
+                            <span className="text-[10px] font-medium tracking-wide">記帳</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('packing')}
+                            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'packing' ? 'text-stone-800' : 'text-stone-300'}`}
+                        >
+                            <Icon name="Briefcase" size={22} />
+                            <span className="text-[10px] font-medium tracking-wide">清單</span>
+                        </button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
+
+
